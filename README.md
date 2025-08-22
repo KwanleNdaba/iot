@@ -1,1 +1,1 @@
-# aiot
+# aiot nextjs application
