@@ -1,3 +1,4 @@
+"use client";
 import { FC, useState } from "react";
 import {
   Card,
@@ -711,16 +712,15 @@ const BillingComponent: FC = () => {
         </CardContent>
       </Card>
 
-      <DisableSubscriptionDialog
+      {/* <DisableSubscriptionDialog
         isOpen={showDisableDialog}
         onClose={() => {
           setShowDisableDialog(false);
           setSubscriptionToDisable(null);
         }}
         onConfirm={handleDisableSubscription}
-        subscription={subscriptionToDisable}
         isDisabling={isDisabling}
-      />
+      /> */}
     </div>
   );
 };

@@ -43,6 +43,7 @@ const SignInCard = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
         setLoading(true);
         // Simulate API call
         setTimeout(() => {
+            router.push("/organization");
             setLoading(false);
             toast.success("Login successful!");
         }, 2000);

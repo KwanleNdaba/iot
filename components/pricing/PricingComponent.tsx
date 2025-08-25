@@ -291,32 +291,7 @@ const PricingComponent: FC = () => {
           })}
         </div>
 
-        {/* Enterprise CTA Section */}
-        {/* <div className="max-w-4xl mx-auto">
-          <Card className="bg-gradient-to-r from-blue-900 to-blue-800 text-white border-0 shadow-2xl">
-            <CardContent className="p-8 text-center">
-              <h3 className="text-2xl font-bold mb-4">Need a Custom Solution?</h3>
-              <p className="text-blue-100 mb-6 text-lg leading-relaxed">
-                Looking for enterprise features, volume discounts, or custom integrations? 
-                Our team will work with you to create the perfect solution for your organization.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="bg-white text-blue-900 hover:bg-blue-50 font-semibold"
-                  onClick={() => window.open("mailto:info@smartsensorflow.com", "_blank")}
-                >
-                  <Mail className="w-5 h-5 mr-2" />
-                  Contact Sales Team
-                </Button>
-                <span className="text-blue-200 text-sm">
-                  Typical response time: 2 hours
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div> */}
+
 
         {/* Trust Indicators */}
         <div className="text-center mt-16 space-y-6">

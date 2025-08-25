@@ -2,7 +2,6 @@
 import { FC, useState } from "react";
 import { Package, Store } from "lucide-react";
 import { toast } from "sonner";
-import Loader from "@/components/ui/loader";
 import ModuleCard from "./ModuleCard";
 import ProductSelectionDialog from "./ProductSelectionDialog";
 import { ModuleWithProducts, Organisation, ProductResponse } from "@/interfaces/product";
@@ -28,7 +27,6 @@ const AllProductsComponent: FC = () => {
     setPurchasingProductId(product.id);
     try {
       // Simulate payment initialization
-      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Mock payment URL
       const mockPaymentUrl = `https://payment.smartsensorflow.com/pay?product=${product.id}&org=${selectedOrganisation.id}`;
@@ -66,58 +64,6 @@ const AllProductsComponent: FC = () => {
     ) || false;
   };
 
-  if (isLoading) {
-    return (
-      <div className="w-full max-w-none">
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-6 py-4">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                <Store className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  All Products
-                </h1>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  Loading available modules and pricing plans
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <Loader text="Loading modules..." />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full max-w-none">
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-6 py-4">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg">
-                <Store className="w-4 h-4 text-red-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  All Products
-                </h1>
-                <p className="text-sm text-red-600 mt-0.5">
-                  Error loading modules: {error}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (modules.length === 0) {
     return (
