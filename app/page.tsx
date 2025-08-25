@@ -40,7 +40,7 @@ import SignInCard from '@/components/auth/SignInCard';
 import SignUpCard from '@/components/auth/SignUpCard';
 import ForgotPasswordCard from '@/components/auth/ForgotPasswordCard';
 
-// Types for Pricing Component
+
 enum ProductType {
   Products = "Products",
   Platform = "Platform"
