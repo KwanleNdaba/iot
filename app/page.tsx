@@ -243,7 +243,6 @@ const SmartSensorFlowLanding = () => {
           </Button>
         </div>
 
-        {/* Mobile Navigation */}
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
