@@ -1,12 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowRight, 
-  Play, 
-  Shield, 
-  Clock, 
-  Users, 
+import {
+  ArrowRight,
+  Play,
+  Shield,
+  Clock,
+  Users,
   Star,
   Check,
   ChevronDown,
@@ -28,7 +28,9 @@ import {
   Activity,
   Cpu,
   Gauge,
-  Smartphone
+  Smartphone,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -39,6 +41,7 @@ import { toast } from 'sonner';
 import SignInCard from '@/components/auth/SignInCard';
 import SignUpCard from '@/components/auth/SignUpCard';
 import ForgotPasswordCard from '@/components/auth/ForgotPasswordCard';
+import SubscriptionPlans from '@/components/billing/SubscriptionPlans';
 
 
 enum ProductType {
@@ -198,9 +201,239 @@ const SmartSensorFlowLanding = () => {
     animate: { transition: { staggerChildren: 0.1 } }
   };
 
+  // Animated Chart Components
+  const AnimatedLineChart = () => {
+    const [animationPhase, setAnimationPhase] = useState(0);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setAnimationPhase(prev => (prev + 1) % 3);
+      }, 2000);
+      return () => clearInterval(interval);
+    }, []);
+
+    const generatePath = (points: number[], phase: number) => {
+      const width = 280;
+      const height = 100;
+      const padding = 20;
+
+      const adjustedPoints = points.map((point, index) => {
+        const oscillation = Math.sin((index + phase * 2) * 0.5) * 5;
+        return point + oscillation;
+      });
+
+      let path = `M ${padding} ${height - (adjustedPoints[0] / 100) * (height - 2 * padding) - padding}`;
+
+      for (let i = 1; i < adjustedPoints.length; i++) {
+        const x = padding + (i / (adjustedPoints.length - 1)) * (width - 2 * padding);
+        const y = height - (adjustedPoints[i] / 100) * (height - 2 * padding) - padding;
+        path += ` L ${x} ${y}`;
+      }
+
+      return path;
+    };
+
+    const dataPoints = [20, 35, 45, 30, 55, 65, 75, 60, 80, 70, 85];
+
+    return (
+      <div className="bg-white rounded-lg p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-gray-700">Device Performance</h4>
+          <div className="flex items-center space-x-1">
+            <TrendingUp className="w-4 h-4 text-green-500" />
+            <span className="text-xs text-green-600 font-medium">+12.5%</span>
+          </div>
+        </div>
+        <svg width="280" height="100" className="overflow-visible">
+          <defs>
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#6366F1" stopOpacity="0.9" />
+            </linearGradient>
+          </defs>
+          <motion.path
+            d={generatePath(dataPoints, animationPhase)}
+            stroke="url(#lineGradient)"
+            strokeWidth="3"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 2, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
+          />
+          {dataPoints.map((point, index) => (
+            <motion.circle
+              key={index}
+              cx={20 + (index / (dataPoints.length - 1)) * 240}
+              cy={100 - (point / 100) * 60 - 20}
+              r="3"
+              fill="#3B82F6"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: index * 0.1, duration: 0.3 }}
+            />
+          ))}
+        </svg>
+      </div>
+    );
+  };
+
+  const AnimatedBarChart = () => {
+    const [bars, setBars] = useState([65, 80, 45, 90, 70, 55]);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setBars(prev => prev.map(bar => Math.max(20, Math.min(95, bar + (Math.random() - 0.5) * 20))));
+      }, 1500);
+      return () => clearInterval(interval);
+    }, []);
+
+    return (
+      <div className="bg-white rounded-lg p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-gray-700">Data Throughput</h4>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">Real-time</Badge>
+        </div>
+        <div className="flex items-end space-x-2 h-20">
+          {bars.map((height, index) => (
+            <motion.div
+              key={index}
+              className="bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-sm flex-1"
+              animate={{ height: `${height}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-gray-500">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <span key={day}>{day}</span>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const AnimatedDonutChart = () => {
+    const [percentage, setPercentage] = useState(85);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setPercentage(prev => {
+          const change = (Math.random() - 0.5) * 10;
+          return Math.max(75, Math.min(98, prev + change));
+        });
+      }, 2000);
+      return () => clearInterval(interval);
+    }, []);
+
+    const radius = 30;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDasharray = circumference;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="bg-white rounded-lg p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-gray-700">System Health</h4>
+          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+        </div>
+        <div className="flex items-center justify-center relative">
+          <svg width="80" height="80" className="transform -rotate-90">
+            <circle
+              cx="40"
+              cy="40"
+              r={radius}
+              stroke="#E5E7EB"
+              strokeWidth="6"
+              fill="none"
+            />
+            <motion.circle
+              cx="40"
+              cy="40"
+              r={radius}
+              stroke="#10B981"
+              strokeWidth="6"
+              fill="none"
+              strokeDasharray={strokeDasharray}
+              animate={{ strokeDashoffset }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.span
+              className="text-lg font-bold text-gray-800"
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              {Math.round(percentage)}%
+            </motion.span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const MetricsCard = ({ title, value, trend, icon: Icon, color }: {
+    title: string;
+    value: string;
+    trend: number;
+    icon: any;
+    color: string;
+  }) => {
+    const [animatedValue, setAnimatedValue] = useState(0);
+
+    useEffect(() => {
+      const numericValue = parseInt(value.replace(/[^0-9]/g, ''));
+      const interval = setInterval(() => {
+        setAnimatedValue(prev => {
+          const change = (Math.random() - 0.5) * (numericValue * 0.1);
+          return Math.max(0, prev + change);
+        });
+      }, 1000);
+
+      // Initial animation
+      const timer = setTimeout(() => {
+        setAnimatedValue(numericValue);
+      }, 100);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timer);
+      };
+    }, [value]);
+
+    return (
+      <div className="bg-white rounded-lg p-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className={`w-8 h-8 ${color} bg-opacity-10 rounded-lg flex items-center justify-center`}>
+              <Icon className={`w-4 h-4 ${color.replace('bg-', 'text-').replace('-100', '-600')}`} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">{title}</p>
+              <motion.p
+                className="text-sm font-bold text-gray-900"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {title.includes('Device') ? Math.round(animatedValue).toLocaleString() : value}
+              </motion.p>
+            </div>
+          </div>
+          <div className={`flex items-center space-x-1 text-xs ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            <span>{Math.abs(trend)}%</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Navigation Component
   const Navigation = () => (
-    <motion.nav 
+    <motion.nav
       className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
@@ -223,13 +456,11 @@ const SmartSensorFlowLanding = () => {
             <a href="#contact" className="text-gray-600 hover:text-blue-600 transition-colors">Contact</a>
           </div>
 
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" onClick={() => { setActiveAuthTab('signin'); setIsAuthModalOpen(true); }}>
+          <div className="hidden md:flex cursor-pointer text-gray-600 hover:text-blue-600 transition-colors items-center space-x-4">
+            <Button className='cursor-pointer' variant="ghost" onClick={() => { setActiveAuthTab('signin'); setIsAuthModalOpen(true); }}>
               Sign In
             </Button>
-            <Button onClick={() => { setActiveAuthTab('signup'); setIsAuthModalOpen(true); }}>
-              Get Started
-            </Button>
+
           </div>
 
           {/* Mobile menu button */}
@@ -260,9 +491,7 @@ const SmartSensorFlowLanding = () => {
                   <Button variant="ghost" className="w-full justify-start" onClick={() => { setActiveAuthTab('signin'); setIsAuthModalOpen(true); setIsMenuOpen(false); }}>
                     Sign In
                   </Button>
-                  <Button className="w-full" onClick={() => { setActiveAuthTab('signup'); setIsAuthModalOpen(true); setIsMenuOpen(false); }}>
-                    Get Started
-                  </Button>
+                 
                 </div>
               </div>
             </motion.div>
@@ -316,22 +545,20 @@ const SmartSensorFlowLanding = () => {
           <button
             type="button"
             onClick={() => setActiveAuthTab('signin')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeAuthTab === 'signin' 
-                ? 'bg-white text-gray-900 shadow-sm' 
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeAuthTab === 'signin'
+                ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             Sign In
           </button>
           <button
             type="button"
             onClick={() => setActiveAuthTab('signup')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeAuthTab === 'signup' 
-                ? 'bg-white text-gray-900 shadow-sm' 
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeAuthTab === 'signup'
+                ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             Sign Up
           </button>
@@ -345,8 +572,8 @@ const SmartSensorFlowLanding = () => {
       return (
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            {activeAuthTab === 'signin' 
-              ? "Don't have an account? " 
+            {activeAuthTab === 'signin'
+              ? "Don't have an account? "
               : "Already have an account? "
             }
             <button
@@ -413,33 +640,31 @@ const SmartSensorFlowLanding = () => {
             <Badge variant="secondary" className="px-4 py-2">
               🚀 Open Source AIoT Platform
             </Badge>
-            
+
             <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Connect, Monitor, and 
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600"> Optimize</span> 
+              Connect, Monitor, and
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600"> Optimize</span>
               Your IoT Infrastructure
             </h1>
-            
+
             <p className="text-xl text-gray-600 leading-relaxed">
-              Smart Sensor Flow is an enterprise-grade AIoT platform that connects any device, 
-              processes data in real-time, and delivers actionable insights through powerful 
+              Smart Sensor Flow is an enterprise-grade AIoT platform that connects any device,
+              processes data in real-time, and delivers actionable insights through powerful
               dashboards and AI-driven analytics.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-8"
-                onClick={() => { setActiveAuthTab('signup'); setIsAuthModalOpen(true); }}
+               
               >
-                Start Free Trial
+              
+                <a href="#pricing" className="text-white transition-colors">Get Started</a>
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-              
-              <Button variant="outline" size="lg" className="px-8">
-                <Play className="w-5 h-5 mr-2" />
-                Watch Demo
-              </Button>
+
+
             </div>
 
             <div className="flex items-center space-x-8 text-sm text-gray-600">
@@ -458,49 +683,85 @@ const SmartSensorFlowLanding = () => {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             {...fadeInUp}
             transition={{ delay: 0.2 }}
             className="relative"
           >
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-8 shadow-2xl">
-              <div className="bg-white rounded-xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">System Overview</h3>
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 shadow-2xl">
+              <div className="space-y-4">
+                {/* Header with live indicators */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-semibold text-lg">Live Analytics Dashboard</h3>
                   <div className="flex space-x-1">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Active Devices</span>
-                    <span className="font-bold text-green-600">1,247</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Data Points/Min</span>
-                    <span className="font-bold text-blue-600">45.2K</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">System Health</span>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">99.9%</Badge>
+                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                    <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Activity className="w-4 h-4" />
-                    <span>Real-time Analytics Active</span>
+                {/* Top row metrics */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <MetricsCard
+                    title="Active Devices"
+                    value="1,247"
+                    trend={8.5}
+                    icon={Database}
+                    color="bg-blue-100"
+                  />
+                  <MetricsCard
+                    title="Data Points/Min"
+                    value="45.2K"
+                    trend={12.3}
+                    icon={Activity}
+                    color="bg-green-100"
+                  />
+                </div>
+
+                {/* Charts grid */}
+                <div className="grid grid-cols-1 gap-4">
+                  <AnimatedLineChart />
+                  <div className="grid grid-cols-2 gap-3">
+                    <AnimatedBarChart />
+                    <AnimatedDonutChart />
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Cpu className="w-4 h-4" />
-                    <span>AI Models: 3 Running</span>
+                </div>
+
+                {/* Bottom status indicators */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between text-white/90 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <Activity className="w-4 h-4" />
+                      <span>Analytics Engine</span>
+                    </div>
+                    <motion.div
+                      className="flex items-center space-x-1"
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span className="text-xs">Running</span>
+                    </motion.div>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Database className="w-4 h-4" />
-                    <span>Data Processing: Normal</span>
+                  <div className="flex items-center justify-between text-white/90 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <Cpu className="w-4 h-4" />
+                      <span>AI Models</span>
+                    </div>
+                    <motion.span
+                      className="text-xs"
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      3 Active
+                    </motion.span>
+                  </div>
+                  <div className="flex items-center justify-between text-white/90 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <BarChart3 className="w-4 h-4" />
+                      <span>Processing Rate</span>
+                    </div>
+                    <span className="text-xs">99.8%</span>
                   </div>
                 </div>
               </div>
@@ -561,7 +822,7 @@ const SmartSensorFlowLanding = () => {
               Everything You Need for IoT Success
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              From device connectivity to AI-powered analytics, Smart Sensor Flow provides 
+              From device connectivity to AI-powered analytics, Smart Sensor Flow provides
               a complete platform for modern IoT deployments.
             </p>
           </motion.div>
@@ -598,10 +859,10 @@ const SmartSensorFlowLanding = () => {
             Choose the Perfect Plan for Your Business
           </h2>
           <p className="text-xl text-gray-600 leading-relaxed mb-8">
-            Start free, scale as you grow. No hidden fees, no surprises. 
+            Start free, scale as you grow. No hidden fees, no surprises.
             Cancel or upgrade anytime with our flexible pricing plans.
           </p>
-          
+
           <div className="flex items-center justify-center gap-8 text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-blue-500" />
@@ -618,99 +879,8 @@ const SmartSensorFlowLanding = () => {
           </div>
         </motion.div>
 
-        {isLoadingProducts ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-96 bg-white rounded-xl shadow-sm animate-pulse"></div>
-            ))}
-          </div>
-        ) : (
-          <motion.div 
-            variants={staggerChildren}
-            {...fadeInUp}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16"
-          >
-            {products.map((product, index) => {
-              const isPopular = product.name.toLowerCase() === "prototype";
-              const { amount, period } = parsePrice(product.price);
-              const features = renderFeatures(product);
-
-              return (
-                <motion.div
-                  key={product.id}
-                  variants={fadeInUp}
-                  className={`relative transition-all duration-300 hover:shadow-xl ${
-                    isPopular
-                      ? "ring-2 ring-blue-500 shadow-2xl scale-105"
-                      : "hover:shadow-lg"
-                  }`}
-                >
-                  <Card className="h-full bg-white">
-                    {isPopular && (
-                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <Badge className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
-                          <Star className="w-4 h-4" />
-                          Most Popular
-                        </Badge>
-                      </div>
-                    )}
-
-                    <CardHeader className="text-center pb-2">
-                      <div className="space-y-2">
-                        <h3 className="text-2xl font-bold text-gray-900">{product.name}</h3>
-                        <div className="flex items-baseline justify-center gap-1">
-                          {amount === "Free" ? (
-                            <span className="text-5xl font-bold text-gray-900">Free</span>
-                          ) : (
-                            <>
-                              <span className="text-5xl font-bold text-gray-900">${amount}</span>
-                              <span className="text-gray-500">/{period}</span>
-                            </>
-                          )}
-                        </div>
-                        <CardDescription className="text-gray-600 leading-relaxed px-2">
-                          {product.description}
-                        </CardDescription>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="pt-6">
-                      <ul className="space-y-4 mb-8">
-                        {features.map((feature, index) => (
-                          <li key={index} className="flex items-start gap-3">
-                            <Check className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-700 leading-relaxed">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      <Button
-                        className={`w-full py-3 font-semibold transition-all duration-200 ${
-                          isPopular
-                            ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl"
-                            : "bg-blue-600 hover:bg-blue-700 text-white"
-                        }`}
-                        size="lg"
-                        onClick={() => { setActiveAuthTab('signup'); setIsAuthModalOpen(true); }}
-                      >
-                        Get Started
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-
-                      {isPopular && (
-                        <p className="text-center text-sm text-blue-600 font-medium mt-3">
-                          Perfect for growing businesses
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
-
-        <motion.div {...fadeInUp} className="text-center mt-16 space-y-6">
+        <SubscriptionPlans />
+        <motion.div {...fadeInUp} className="text-center">
           <p className="text-gray-500 text-sm">Trusted by 10,000+ companies worldwide</p>
           <div className="flex items-center justify-center space-x-8 text-xs text-gray-400">
             <span className="flex items-center gap-2">
@@ -727,6 +897,7 @@ const SmartSensorFlowLanding = () => {
             </span>
           </div>
         </motion.div>
+
       </div>
     </section>
   );
@@ -773,12 +944,12 @@ const SmartSensorFlowLanding = () => {
               Extend Your Platform with Smart Modules
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Browse our marketplace of pre-built modules and industry-specific solutions. 
+              Browse our marketplace of pre-built modules and industry-specific solutions.
               Plug-and-play functionality without complex setup or coding.
             </p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={staggerChildren}
             {...fadeInUp}
             className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
@@ -822,13 +993,13 @@ const SmartSensorFlowLanding = () => {
             Ready to Transform Your IoT Infrastructure?
           </h2>
           <p className="text-xl text-blue-100 leading-relaxed">
-            Join thousands of companies using Smart Sensor Flow to connect, monitor, 
+            Join thousands of companies using Smart Sensor Flow to connect, monitor,
             and optimize their IoT deployments. Start your free trial today.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-white text-blue-600 hover:bg-gray-100 px-8"
               onClick={() => { setActiveAuthTab('signup'); setIsAuthModalOpen(true); }}
             >
@@ -863,7 +1034,7 @@ const SmartSensorFlowLanding = () => {
               <span className="text-xl font-bold">Smart Sensor Flow</span>
             </div>
             <p className="text-gray-400 leading-relaxed">
-              The leading open-source AIoT platform for connecting devices, processing data, 
+              The leading open-source AIoT platform for connecting devices, processing data,
               and delivering actionable insights.
             </p>
             <div className="flex space-x-4">
