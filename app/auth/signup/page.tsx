@@ -133,14 +133,45 @@ const FormSchema = z.object({
     organizationName: z.string().min(2, {
         message: "Organization name must be at least 2 characters.",
     }),
+    organizationType: z.string().min(1, {
+        message: "Please select an organization type.",
+    }),
+    industry: z.string().min(1, {
+        message: "Please select an industry.",
+    }),
+    companySize: z.string().min(1, {
+        message: "Please select company size.",
+    }),
+    website: z.string().optional(),
     firstName: z.string().min(2, {
         message: "First name must be at least 2 characters.",
     }),
     lastName: z.string().min(2, {
         message: "Last name must be at least 2 characters.",
     }),
+    jobTitle: z.string().min(2, {
+        message: "Job title must be at least 2 characters.",
+    }),
     email: z.string().email({
         message: "Must be a valid email.",
+    }),
+    phoneNumber: z.string().min(10, {
+        message: "Phone number must be at least 10 characters.",
+    }),
+    address: z.string().min(5, {
+        message: "Address must be at least 5 characters.",
+    }),
+    city: z.string().min(2, {
+        message: "City must be at least 2 characters.",
+    }),
+    state: z.string().min(2, {
+        message: "State must be at least 2 characters.",
+    }),
+    zipCode: z.string().min(5, {
+        message: "ZIP code must be at least 5 characters.",
+    }),
+    country: z.string().min(1, {
+        message: "Please select a country.",
     }),
     password: z.string().min(8, {
         message: "Password must be at least 8 characters.",
@@ -163,9 +194,20 @@ export default function OrganizationSignupPage() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       organizationName: "",
+      organizationType: "",
+      industry: "",
+      companySize: "",
+      website: "",
       firstName: "",
       lastName: "",
+      jobTitle: "",
       email: "",
+      phoneNumber: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
       password: "",
       confirmPassword: "",
     },
