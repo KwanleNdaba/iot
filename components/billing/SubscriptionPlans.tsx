@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Info, Star, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Plan {
   id: string;
@@ -118,6 +119,7 @@ const regions = [
 export default function SubscriptionPlans() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [hoveredSupport, setHoveredSupport] = useState<string | null>(null);
+  const router = useRouter();
 
   const handlePlanSelect = (planId: string) => {
     console.log(`Selected plan: ${planId}`);
@@ -171,7 +173,7 @@ export default function SubscriptionPlans() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handlePlanSelect(plan.id)}
+                onClick={() => router.push('/auth/signup')}
                 className={`w-full py-3 cursor-pointer px-4 rounded-lg font-semibold transition-all duration-200 mb-6 ${
                   plan.isPopular
                     ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md'

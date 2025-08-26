@@ -959,8 +959,8 @@ export default function OrganizationSignupPage() {
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
               <Link
-                href="/signin"
-                className="text-blue-600 hover:text-blue-800 font-medium underline"
+                href="/auth/signin"
+                className="text-blue-600 cursor-pointer hover:text-blue-800 font-medium underline"
               >
                 Sign in
               </Link>
