@@ -1,9 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ArrowRight, 
@@ -15,54 +12,17 @@ import {
     Eye, 
     EyeOff,
     Clock,
-    RefreshCw
+    RefreshCw,
+    KeyRound
 } from 'lucide-react';
-import Link from "next/link";
 import Image from "next/image";
 import SmartLogo from "@/public/images/smartLogo.jpg";
-import { useRouter } from "next/navigation";
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormMessage,
-} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Loader from "@/components/ui/loader";
 import { toast } from "sonner";
-
-// Form schemas for each step
-const EmailSchema = z.object({
-    email: z.string().email({
-        message: "Must be a valid email address.",
-    }),
-});
-
-const OTPSchema = z.object({
-    otp: z.string().min(6, {
-        message: "OTP must be 6 digits.",
-    }).max(6, {
-        message: "OTP must be 6 digits.",
-    }).regex(/^\d+$/, {
-        message: "OTP must contain only numbers.",
-    }),
-});
-
-const PasswordSchema = z.object({
-    password: z.string().min(8, {
-        message: "Password must be at least 8 characters.",
-    }).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-        message: "Password must contain uppercase, lowercase, number, and special character.",
-    }),
-    confirmPassword: z.string().min(8, {
-        message: "Password must be at least 8 characters.",
-    }),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-});
+import { AUTH_API } from '@/api/endpoints/rest-api/auth/auth';
+import { useRouter } from 'next/navigation';
 
 type Step = 'email' | 'otp' | 'password';
 
@@ -94,13 +54,17 @@ const steps: StepInfo[] = [
     }
 ];
 
-export default function ResetPasswordFlow() {
+export default function ForgetPasswordFlow() {
     const [currentStep, setCurrentStep] = useState<Step>('email');
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
+    const [otp, setOtp] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [otpTimer, setOtpTimer] = useState(0);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const router = useRouter();
 
     // Timer effect for OTP resend
@@ -114,68 +78,129 @@ export default function ResetPasswordFlow() {
         return () => clearInterval(interval);
     }, [otpTimer]);
 
-    const emailForm = useForm<z.infer<typeof EmailSchema>>({
-        resolver: zodResolver(EmailSchema),
-        defaultValues: { email: "" },
-    });
-
-    const otpForm = useForm<z.infer<typeof OTPSchema>>({
-        resolver: zodResolver(OTPSchema),
-        defaultValues: { otp: "" },
-    });
-
-    const passwordForm = useForm<z.infer<typeof PasswordSchema>>({
-        resolver: zodResolver(PasswordSchema),
-        defaultValues: { password: "", confirmPassword: "" },
-    });
-
     const currentStepInfo = steps.find(s => s.step === currentStep)!;
     const currentStepIndex = steps.findIndex(s => s.step === currentStep);
 
-    const handleEmailSubmit = async (data: z.infer<typeof EmailSchema>) => {
-        setLoading(true);
-        setEmail(data.email);
-        
-        // Simulate API call
-        setTimeout(() => {
-            setLoading(false);
-            setCurrentStep('otp');
-            setOtpTimer(60); // Start 60 second timer
-            toast.success("Verification code sent to your email!");
-        }, 1500);
+    // Validation functions
+    const validateEmail = () => {
+        const newErrors: Record<string, string> = {};
+        if (!email) {
+            newErrors.email = 'Email is required';
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            newErrors.email = 'Must be a valid email address';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
-    const handleOTPSubmit = async (data: z.infer<typeof OTPSchema>) => {
-        setLoading(true);
+    const validateOtp = () => {
+        const newErrors: Record<string, string> = {};
+        if (!otp) {
+            newErrors.otp = 'OTP is required';
+        } else if (!/^\d{6}$/.test(otp)) {
+            newErrors.otp = 'OTP must be 6 digits';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validatePassword = () => {
+        const newErrors: Record<string, string> = {};
+        if (!password) {
+            newErrors.password = 'Password is required';
+        } else if (password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters';
+        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)) {
+            newErrors.password = 'Password must contain uppercase, lowercase, number, and special character';
+        }
         
-        // Simulate API call
-        setTimeout(() => {
+        if (!confirmPassword) {
+            newErrors.confirmPassword = 'Please confirm your password';
+        } else if (password !== confirmPassword) {
+            newErrors.confirmPassword = 'Passwords do not match';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleEmailSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateEmail()) return;
+        
+        setLoading(true);
+        try {
+            const response = await AUTH_API.SEND_OTP({ email });
+            if (response.error !== false) throw new Error('Failed to send OTP');
+            
+            setOtpTimer(60); // Start 60 second timer
+            setCurrentStep('otp');
+            toast.success("Verification code sent to your email!");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to send OTP');
+        } finally {
             setLoading(false);
+        }
+    };
+
+    const handleOTPSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateOtp()) return;
+        
+        setLoading(true);
+        try {
+            const response = await AUTH_API.VERIFY_OTP({ email, otp });
+            if (response.error !== false) throw new Error('Invalid OTP');
+            
             setCurrentStep('password');
             toast.success("Code verified successfully!");
-        }, 1000);
-    };
-
-    const handlePasswordSubmit = async (data: z.infer<typeof PasswordSchema>) => {
-        setLoading(true);
-        
-        // Simulate API call
-        setTimeout(() => {
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Invalid OTP');
+        } finally {
             setLoading(false);
-            toast.success("Password reset successfully!");
-            router.push("/organization/signin");
-        }, 1500);
+        }
     };
 
-    const handleResendOTP = () => {
+    const handlePasswordSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validatePassword()) return;
+
+        setLoading(true);
+        try {
+            const response = await AUTH_API.UPDATE_PASSWORD({
+                email,
+                otp,
+                newPassword: password
+            });
+            
+            if (response.error !== false) throw new Error('Password update failed');
+            
+            toast.success("Password updated successfully!");
+            setTimeout(() => {
+              router.replace('/auth/signin')
+            }, 2000);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Password update failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendOTP = async () => {
         if (otpTimer > 0) return;
         
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            const response = await AUTH_API.SEND_OTP({ email });
+            if (response.error !== false) throw new Error('Failed to resend OTP');
+            
             setOtpTimer(60);
             toast.success("New verification code sent!");
-        }, 1000);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to resend OTP');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const goBack = () => {
@@ -184,6 +209,8 @@ export default function ResetPasswordFlow() {
         } else if (currentStep === 'password') {
             setCurrentStep('otp');
         }
+        // Clear errors when going back
+        setErrors({});
     };
 
     const formatTime = (seconds: number) => {
@@ -299,246 +326,220 @@ export default function ResetPasswordFlow() {
 
                             {/* Step 1: Email */}
                             {currentStep === 'email' && (
-                                <Form {...emailForm}>
-                                    <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="space-y-6">
-                                        <FormField
-                                            control={emailForm.control}
-                                            name="email"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Email Address
-                                                    </label>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <Mail className="h-5 w-5 text-gray-400" />
-                                                            </div>
-                                                            <Input
-                                                                placeholder="email@company.com"
-                                                                className="h-12 pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
-                                                                {...field}
-                                                            />
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs mt-1" />
-                                                </FormItem>
-                                            )}
-                                        />
+                                <form onSubmit={handleEmailSubmit} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Email Address
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Mail className="h-5 w-5 text-gray-400" />
+                                            </div>
+                                            <Input
+                                                placeholder="email@company.com"
+                                                className="h-12 pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                            />
+                                        </div>
+                                        {errors.email && (
+                                            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                                        )}
+                                    </div>
 
-                                        <Button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors duration-200"
-                                        >
-                                            {loading ? (
-                                                <Loader text="Sending code..." size="sm" />
-                                            ) : (
-                                                <>
-                                                    Send verification code
-                                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                                </>
-                                            )}
-                                        </Button>
-                                    </form>
-                                </Form>
+                                    <Button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors duration-200"
+                                    >
+                                        {loading ? (
+                                            <Loader text="Sending code..." size="sm" />
+                                        ) : (
+                                            <>
+                                                Send verification code
+                                                <KeyRound className="w-4 h-4 ml-2" />
+                                            </>
+                                        )}
+                                    </Button>
+                                </form>
                             )}
 
                             {/* Step 2: OTP */}
                             {currentStep === 'otp' && (
-                                <Form {...otpForm}>
-                                    <form onSubmit={otpForm.handleSubmit(handleOTPSubmit)} className="space-y-6">
-                                        <FormField
-                                            control={otpForm.control}
-                                            name="otp"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Verification Code
-                                                    </label>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <Shield className="h-5 w-5 text-gray-400" />
-                                                            </div>
-                                                            <Input
-                                                                placeholder="000000"
-                                                                className="h-12 pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base text-center tracking-widest"
-                                                                maxLength={6}
-                                                                {...field}
-                                                            />
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs mt-1" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        {/* Timer and Resend */}
-                                        <div className="text-center text-sm">
-                                            {otpTimer > 0 ? (
-                                                <div className="flex items-center justify-center gap-2 text-gray-600">
-                                                    <Clock className="w-4 h-4" />
-                                                    <span>Resend code in {formatTime(otpTimer)}</span>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={handleResendOTP}
-                                                    disabled={loading}
-                                                    className="text-blue-600 hover:text-blue-800 font-medium underline flex items-center justify-center gap-2"
-                                                >
-                                                    <RefreshCw className="w-4 h-4" />
-                                                    Resend verification code
-                                                </button>
-                                            )}
+                                <form onSubmit={handleOTPSubmit} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Verification Code
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Shield className="h-5 w-5 text-gray-400" />
+                                            </div>
+                                            <Input
+                                                placeholder="000000"
+                                                className="h-12 pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base text-center tracking-widest"
+                                                maxLength={6}
+                                                value={otp}
+                                                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                                            />
                                         </div>
+                                        {errors.otp && (
+                                            <p className="text-xs text-red-500 mt-1">{errors.otp}</p>
+                                        )}
+                                    </div>
 
-                                        <div className="flex gap-3">
-                                            <Button
+                                    {/* Timer and Resend */}
+                                    <div className="text-center text-sm">
+                                        {otpTimer > 0 ? (
+                                            <div className="flex items-center justify-center gap-2 text-gray-600">
+                                                <Clock className="w-4 h-4" />
+                                                <span>Resend code in {formatTime(otpTimer)}</span>
+                                            </div>
+                                        ) : (
+                                            <button
                                                 type="button"
-                                                onClick={goBack}
-                                                variant="outline"
-                                                className="flex-1 h-12 border-gray-300 hover:bg-gray-50"
-                                            >
-                                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                                Back
-                                            </Button>
-                                            <Button
-                                                type="submit"
+                                                onClick={handleResendOTP}
                                                 disabled={loading}
-                                                className="flex-1 h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium"
+                                                className="text-blue-600 hover:text-blue-800 font-medium underline flex items-center justify-center gap-2"
                                             >
-                                                {loading ? (
-                                                    <Loader text="Verifying..." size="sm" />
-                                                ) : (
-                                                    <>
-                                                        Verify code
-                                                        <ArrowRight className="w-4 h-4 ml-2" />
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </form>
-                                </Form>
+                                                <RefreshCw className="w-4 h-4" />
+                                                Resend verification code
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button
+                                            type="button"
+                                            onClick={goBack}
+                                            variant="outline"
+                                            className="flex-1 h-12 border-gray-300 hover:bg-gray-50"
+                                        >
+                                            <ArrowLeft className="w-4 h-4 mr-2" />
+                                            Back
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="flex-1 h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium"
+                                        >
+                                            {loading ? (
+                                                <Loader text="Verifying..." size="sm" />
+                                            ) : (
+                                                <>
+                                                    Verify code
+                                                    <ArrowRight className="w-4 h-4 ml-2" />
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </form>
                             )}
 
                             {/* Step 3: New Password */}
                             {currentStep === 'password' && (
-                                <Form {...passwordForm}>
-                                    <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-6">
-                                        <FormField
-                                            control={passwordForm.control}
-                                            name="password"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        New Password
-                                                    </label>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <Lock className="h-5 w-5 text-gray-400" />
-                                                            </div>
-                                                            <Input
-                                                                type={showPassword ? "text" : "password"}
-                                                                placeholder="Enter new password"
-                                                                className="h-12 pl-10 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
-                                                                {...field}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowPassword(!showPassword)}
-                                                                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-md transition-colors"
-                                                            >
-                                                                {showPassword ? (
-                                                                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                                                ) : (
-                                                                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs mt-1" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={passwordForm.control}
-                                            name="confirmPassword"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Confirm New Password
-                                                    </label>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <Lock className="h-5 w-5 text-gray-400" />
-                                                            </div>
-                                                            <Input
-                                                                type={showConfirmPassword ? "text" : "password"}
-                                                                placeholder="Confirm new password"
-                                                                className="h-12 pl-10 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
-                                                                {...field}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-md transition-colors"
-                                                            >
-                                                                {showConfirmPassword ? (
-                                                                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                                                ) : (
-                                                                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs mt-1" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        {/* Password Requirements */}
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                            <h4 className="text-sm font-medium text-blue-900 mb-2">Password requirements:</h4>
-                                            <ul className="text-xs text-blue-700 space-y-1">
-                                                <li>• At least 8 characters long</li>
-                                                <li>• Contains uppercase and lowercase letters</li>
-                                                <li>• Contains at least one number</li>
-                                                <li>• Contains at least one special character</li>
-                                            </ul>
-                                        </div>
-
-                                        <div className="flex gap-3">
-                                            <Button
+                                <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            New Password
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Lock className="h-5 w-5 text-gray-400" />
+                                            </div>
+                                            <Input
+                                                type={showPassword ? "text" : "password"}
+                                                placeholder="Enter new password"
+                                                className="h-12 pl-10 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                            />
+                                            <button
                                                 type="button"
-                                                onClick={goBack}
-                                                variant="outline"
-                                                className="flex-1 h-12 border-gray-300 hover:bg-gray-50"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-md transition-colors"
                                             >
-                                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                                Back
-                                            </Button>
-                                            <Button
-                                                type="submit"
-                                                disabled={loading}
-                                                className="flex-1 h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium"
-                                            >
-                                                {loading ? (
-                                                    <Loader text="Resetting password..." size="sm" />
+                                                {showPassword ? (
+                                                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                                                 ) : (
-                                                    <>
-                                                        Reset password
-                                                        <CheckCircle className="w-4 h-4 ml-2" />
-                                                    </>
+                                                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                                                 )}
-                                            </Button>
+                                            </button>
                                         </div>
-                                    </form>
-                                </Form>
+                                        {errors.password && (
+                                            <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Confirm New Password
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Lock className="h-5 w-5 text-gray-400" />
+                                            </div>
+                                            <Input
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                placeholder="Confirm new password"
+                                                className="h-12 pl-10 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-md transition-colors"
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                                ) : (
+                                                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                                )}
+                                            </button>
+                                        </div>
+                                        {errors.confirmPassword && (
+                                            <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Password Requirements */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <h4 className="text-sm font-medium text-blue-900 mb-2">Password requirements:</h4>
+                                        <ul className="text-xs text-blue-700 space-y-1">
+                                            <li>• At least 8 characters long</li>
+                                            <li>• Contains uppercase and lowercase letters</li>
+                                            <li>• Contains at least one number</li>
+                                            <li>• Contains at least one special character</li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button
+                                            type="button"
+                                            onClick={goBack}
+                                            variant="outline"
+                                            className="flex-1 h-12 border-gray-300 hover:bg-gray-50"
+                                        >
+                                            <ArrowLeft className="w-4 h-4 mr-2" />
+                                            Back
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="flex-1 h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium"
+                                        >
+                                            {loading ? (
+                                                <Loader text="Resetting password..." size="sm" />
+                                            ) : (
+                                                <>
+                                                    Reset password
+                                                    <CheckCircle className="w-4 h-4 ml-2" />
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </form>
                             )}
                         </motion.div>
                     </AnimatePresence>
@@ -552,12 +553,12 @@ export default function ResetPasswordFlow() {
                     >
                         <p className="text-sm text-gray-600">
                             Remember your password?{" "}
-                            <Link
-                                href="/auth/signin"
-                                className="text-blue-600 hover:text-blue-800 font-medium underline"
+                            <span 
+                                onClick={() => router.replace('/auth/signin')} 
+                                className="text-blue-600 hover:text-blue-800 font-medium underline cursor-pointer"
                             >
-                                Back to sign in
-                            </Link>
+                                Return to login
+                            </span>
                         </p>
                     </motion.div>
                 </div>
