@@ -7,19 +7,13 @@ import Link from "next/link";
 import Image from "next/image";
 import SmartLogo from "@/public/images/smartLogo.jpg";
 
-interface AuthLayoutProps {
-    children: React.ReactNode;
-    showBackToHome?: boolean;
-    title?: string;
-    subtitle?: string;
-}
 
 export default function AuthLayout({ 
     children, 
     showBackToHome = true, 
     title = "Smart Sensor Flow",
     subtitle = "Enterprise IoT Platform"
-}: AuthLayoutProps) {
+}: any) {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 relative">
             {/* Background Pattern */}

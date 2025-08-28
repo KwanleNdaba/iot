@@ -3,14 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronLeft, ChevronRight, Star, Info, ArrowRight } from 'lucide-react';
-import SmartLogo from "@/public/images/icon.jpg";
-import { usePaystackPayment } from 'react-paystack';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 // API imports
 import { PLAN_API } from '@/api/endpoints/rest-api/plan/plan';
-import {  ORGANIZATION_API } from '@/api/endpoints/rest-api/organization/organization';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { ORGANIZATION_API } from '@/api/endpoints/rest-api/organization/organization';
 
 // Paystack configuration
 const PAYSTACK_PUBLIC_KEY = "pk_test_d19530e7c057ec4eb7142ce000fc198d8349be56";
@@ -65,6 +63,8 @@ export default function OrganizationSignupPage() {
   const router = useRouter();
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [PaystackHook, setPaystackHook] = useState<any>(null);
   const [formData, setFormData] = useState<OrganizationFormData>({
     organizationName: '',
     organizationType: '',
@@ -85,6 +85,18 @@ export default function OrganizationSignupPage() {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Set client-side flag and load Paystack
+  useEffect(() => {
+    setIsClient(true);
+    
+    // Dynamically import Paystack only on client side
+    if (typeof window !== 'undefined') {
+      import('react-paystack').then((module) => {
+        setPaystackHook(() => module.usePaystackPayment);
+      });
+    }
+  }, []);
 
   // Fetch plans from API
   useEffect(() => {
@@ -126,7 +138,7 @@ export default function OrganizationSignupPage() {
   const currentPlan = plans[currentPlanIndex];
 
   // Initialize Paystack payment
-  const initializePayment = usePaystackPayment({
+  const initializePayment = PaystackHook ? PaystackHook({
     reference: new Date().getTime().toString(),
     email: formData.email,
     amount: currentPlan ? currentPlan.price * 100 : 0, 
@@ -149,7 +161,7 @@ export default function OrganizationSignupPage() {
         }
       ]
     }
-  });
+  }) : () => {};
 
   const handlePreviousPlan = () => {
     setCurrentPlanIndex((prev) => (prev > 0 ? prev - 1 : plans.length - 1));
@@ -263,7 +275,6 @@ export default function OrganizationSignupPage() {
       const response: any = await ORGANIZATION_API.CREATE_ORGANIZATION(organizationData);
       
       if (response.data.id) {
-       
         setFormData({
           organizationName: '',
           organizationType: '',
@@ -286,7 +297,7 @@ export default function OrganizationSignupPage() {
         setAgreeToTerms(false);
         setErrors({});
         setPaymentCompleted(false);
-        router.push("/auth/login");
+        router.push("/auth/signin");
       } else {
         alert(response.message || "Failed to create organization");
       }
@@ -335,7 +346,7 @@ export default function OrganizationSignupPage() {
     try {
       // Initialize Paystack payment
       initializePayment({
-        onSuccess: (reference) => onSuccess(),
+        onSuccess: (reference: any) => onSuccess(),
         onClose: onClose
       });
     } catch (error) {
@@ -345,8 +356,8 @@ export default function OrganizationSignupPage() {
     }
   };
 
-  // Show loading spinner while plans are being fetched
-  if (plansLoading) {
+  // Show loading spinner while plans are being fetched or component is not ready
+  if (plansLoading || !isClient) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -566,7 +577,7 @@ export default function OrganizationSignupPage() {
           <div className="flex justify-center mb-8">
             <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-lg bg-transparent">
               <Image
-                src={SmartLogo}
+                src="/images/icon.jpg"
                 alt="Smart Sensor Flow Logo"
                 fill
                 className="object-cover"
@@ -978,7 +989,7 @@ export default function OrganizationSignupPage() {
 
             <button
               type="submit"
-              disabled={loading || !agreeToTerms}
+              disabled={loading || !agreeToTerms || !PaystackHook}
               className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
