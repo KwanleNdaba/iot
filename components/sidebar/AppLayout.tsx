@@ -1,13 +1,12 @@
 "use client";
 import { FC, ReactNode, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
   ChevronRight, 
   Menu, 
   X, 
   Bell, 
-  Settings, 
   BarChart3, 
   Users, 
   Package, 
@@ -18,16 +17,16 @@ import {
   RefreshCw,
   DollarSign,
   ChevronDown,
-  Building2,
   User,
-  Home,
   LogOut,
   MoreHorizontal,
   LineChart,
   AlertTriangle,
-  TrendingUp,
   Activity
 } from "lucide-react";
+import { decodeAccessToken } from "@/api/lib/ecryptUser";
+import { ConfirmationModal } from "../ConfirmationModal";
+import Cookies from "universal-cookie";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -37,7 +36,11 @@ const AppLayout: FC<AppLayoutProps> = ({ children }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openConfirmationModal, setOpenConfirmationModal] = useState(false);
   const [activeItem, setActiveItem] = useState('dashboard');
+  const router = useRouter();
+  const loggedInUser = decodeAccessToken();
+  const cookies = new Cookies();
   const [expandedSections, setExpandedSections] = useState({
     organization: true,
     products: true,
@@ -220,6 +223,15 @@ const AppLayout: FC<AppLayoutProps> = ({ children }) => {
   };
 
   const breadcrumbs = getBreadcrumbs();
+
+  const handleLogout = () => {
+      cookies.remove("token",{
+    path: '/',
+    secure: true,
+    sameSite: 'lax'
+  });
+  router.replace("/")
+  }
   
   return (
     <div className="flex h-screen bg-gray-50">
@@ -254,7 +266,7 @@ const AppLayout: FC<AppLayoutProps> = ({ children }) => {
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-sm font-semibold text-gray-900 truncate">
-                TechCorp Solutions
+                {loggedInUser?.organization?.organizationName || "N/A"}
               </h2>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -351,17 +363,17 @@ const AppLayout: FC<AppLayoutProps> = ({ children }) => {
               <User className="h-4 w-4 text-gray-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">John Doe</p>
-              <p className="text-xs text-gray-500 truncate">john.doe@techcorp.com</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{loggedInUser?.firstName} {loggedInUser?.lastName}</p>
+              <p className="text-xs text-gray-500 truncate">{loggedInUser?.email}</p>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="relative">
+              {/* <div className="relative">
                 <Bell className="h-4 w-4 text-gray-400" />
                 <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
                   3
                 </span>
-              </div>
-              <button className="p-1 hover:bg-gray-100 rounded transition-colors">
+              </div> */}
+              <button onClick={() => setOpenConfirmationModal(true)} className="p-1 hover:bg-gray-100 cursor-pointer rounded transition-colors">
                 <LogOut className="h-4 w-4 text-gray-400" />
               </button>
             </div>
@@ -439,6 +451,14 @@ const AppLayout: FC<AppLayoutProps> = ({ children }) => {
           </div>
         </footer>
       </div>
+      <ConfirmationModal
+              show={openConfirmationModal}
+              isLoading={false}
+              onClose={() => setOpenConfirmationModal(false)}
+              onConfirm={handleLogout}
+              message="Are you sure you want to log out?"
+              confirmText="Log Out"
+            />
     </div>
   );
 };

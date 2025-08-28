@@ -1,45 +1,80 @@
-import { AccountStatus } from './common';
-
-export enum OrganisationState {
-  Inactive = 0,
-  Active = 1,
-  Disabled = 2
+export interface IOrganization {
+  id?: number;
+  organizationName: string;
+  organizationType: string;
+  industry: string;
+  companySize: string;
+  website?: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  planId?: number;
+  userId?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface ModuleAttributes {
-  urlLive: string;
-  urlLocal: string;
+export interface IOrganizationWithUser extends IOrganization {
+  // User data for organization creation
+  firstName: string;
+  lastName: string;
+  jobTitle?: string;
+  email: string;
+  phoneNumber?: string;
+  password: string;
+  role?: string;
 }
 
-export interface ModuleResponse {
-  id: string;
-  name: string;
-  description: string;
-  attributes: ModuleAttributes;
-  createdBy: string;
-  createdAt: string;
-  modifiedBy: string;
-  modifiedAt: string;
+// Separate interface for organization-only data (without user fields)
+export interface IOrganizationData {
+  organizationName: string;
+  organizationType: string;
+  industry: string;
+  companySize: string;
+  website?: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  planId?: number;
 }
 
-export interface GetModulesResponse {
-  modules: ModuleResponse[];
+// User data for organization creation
+export interface IUserData {
+  firstName: string;
+  lastName: string;
+  jobTitle?: string;
+  email: string;
+  phoneNumber?: string;
+  password: string;
+  role?: string;
 }
 
-export interface OrganisationResponse {
+// Combined interface for creating organization with user
+export interface IOrganizationCreate extends IOrganizationData, IUserData {}
+
+// Update interface - can update organization fields but not user data directly
+export interface IOrganizationUpdate extends Partial<IOrganizationData> {
   id: number;
-  name: string;
-  organisationStatus: OrganisationState;
-  createdAt: string;
-  modules: ModuleResponse[];
-  isOwner: boolean;
-  userStatus: AccountStatus;
 }
 
-export interface GetOrganisationResponse {
-  organisations: OrganisationResponse[];
-}
-
-export interface CreateOrganisationResponse {
-  organisationId: number;
+export interface IOrganizationResponse extends IOrganization {
+  user?: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    jobTitle?: string;
+    phoneNumber?: string;
+    role?: string;
+  };
+  plan?: {
+    id: number;
+    name: string;
+    planType: string;
+    price: number;
+  };
 }

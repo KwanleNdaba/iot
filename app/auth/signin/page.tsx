@@ -22,6 +22,12 @@ import { Input } from "@/components/ui/input";
 import Loader from "@/components/ui/loader";
 import { toast } from "sonner";
 
+import { jwtDecode } from 'jwt-decode';
+import Cookies from 'universal-cookie';
+import { AUTH_API } from '@/api/endpoints/rest-api/auth/auth';
+import { IDecodedJWT } from '@/interfaces/user';
+import { encryptToken } from '@/api/lib/ecryptUser';
+
 const FormSchema = z.object({
     email: z.string().email({
         message: "Must be a valid email.",
@@ -35,7 +41,9 @@ export default function OrganizationSigninPage() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+    const [loginError, setLoginError] = useState('');
     const router = useRouter();
+    const cookies = new Cookies();
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
@@ -45,14 +53,50 @@ export default function OrganizationSigninPage() {
         },
     });
 
-    const onSubmit = async (data: z.infer<typeof FormSchema>) => {
+    const handleLogin = async (data: z.infer<typeof FormSchema>) => {
+        setLoginError('');
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        
+        try {
+            const payload = {
+                email: data.email,
+                password: data.password
+            };
+
+            const authResponse: any = await AUTH_API.LOGIN_POST(payload);
+            
+            if (authResponse.data.accessToken) {
+                cookies.remove("token", {
+                    path: '/',
+                    secure: true,
+                    sameSite: 'lax'
+                });
+                
+                encryptToken(authResponse.data);
+                const decodedUserData: IDecodedJWT = jwtDecode(authResponse.data.accessToken);
+                console.log("decodedUserData",decodedUserData);
+                if (decodedUserData.role === "admin" ) {
+                    router.replace("/organization");
+                } else {
+                 return;
+                }
+            } else if (authResponse.data.message) {
+                setLoginError(authResponse.data.message);
+                setLoading(false);
+            } else {
+                setLoading(false);
+                setLoginError("Internal server error. Please try again later.");
+            }
+        } catch (error: any) {
+            console.error(error);
             setLoading(false);
-            toast.success("Welcome back! Signing you in...");
-            router.push("/organization/dashboard");
-        }, 1500);
+            
+            if (error.response?.data?.message) {
+                setLoginError(error.response.data.message);
+            } else {
+                setLoginError("An unexpected error occurred. Please try again.");
+            }
+        }
     };
 
     const togglePasswordVisibility = () => {
@@ -115,7 +159,7 @@ export default function OrganizationSigninPage() {
                         transition={{ delay: 0.4, duration: 0.5 }}
                     >
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-6">
                                 {/* Email Field */}
                                 <FormField
                                     control={form.control}
@@ -202,6 +246,13 @@ export default function OrganizationSigninPage() {
                                         Forgot password?
                                     </Link>
                                 </div>
+
+                                {/* Error Message */}
+                                {loginError && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-red-600 text-center text-sm">{loginError}</p>
+                                    </div>
+                                )}
 
                                 {/* Submit Button */}
                                 <Button

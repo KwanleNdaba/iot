@@ -23,7 +23,7 @@ export default function AuthLayout({
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 relative">
             {/* Background Pattern */}
-            <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+            <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
             
             {/* Header Navigation */}
             <header className="relative z-10 px-6 py-4">

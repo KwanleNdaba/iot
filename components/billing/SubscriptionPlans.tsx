@@ -1,152 +1,108 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Info, Star, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { IPlan } from '@/interfaces/plan';
+import { PLAN_API } from '@/api/endpoints/rest-api/plan/plan';
 
-interface Plan {
-  id: string;
+
+interface SupportInfo {
   name: string;
+  hours: number;
   description: string;
-  price: number;
-  isPopular?: boolean;
-  features: string[];
-  supportInfo?: {
-    name: string;
-    hours: number;
-    description: string;
-  };
 }
 
-const plans: Plan[] = [
-  {
-    id: 'maker',
-    name: 'Maker',
-    description: 'Start exploring features',
-    price: 29,
-    features: [
-      'Up to 2 Gateways',
-      'Up to 4 Sensors',
-      '500K data points/month',
-      'Device Manager',
-      'Community/Resource Support'
-    ]
-  },
-  {
-    id: 'prototype',
-    name: 'Prototype',
-    description: 'For PoCs and MVPs',
-    price: 194,
-    isPopular: true,
-    features: [
-      'Up to 5 Gateways',
-      'Up to 10 Sensors',
-      '1 Million data points/month',
-      'Device Manager',
-      'Standard Support',
-      'White-Labeling'
-    ],
-    supportInfo: {
-      name: 'Standard Support',
-      hours: 3,
-      description: 'Our standard support package provides customers with up to 3 hours of professional assistance each month. This support is accessible through multiple channels, including phone, video call, and email, ensuring you receive timely help in the format most convenient for you. Note: Support Hours are not transferable to the next month. All support hours not used will be lost.'
-    }
-  },
-  {
-    id: 'startup',
-    name: 'Startup',
-    description: 'For upcoming IoT Unicorns',
-    price: 519,
-    features: [
-      'Up to 10 Gateways',
-      'Up to 30 Sensors',
-      '1.5 Million data points/month',
-      'Device Manager',
-      'Professional Support',
-      'White-Labeling'
-    ],
-    supportInfo: {
-      name: 'Professional Support',
-      hours: 5,
-      description: 'Our professional support package provides customers with up to 5 hours of professional assistance each month. This support is accessible through multiple channels, including phone, video call, and email, ensuring you receive timely help in the format most convenient for you. Note: Support Hours are not transferable to the next month. All support hours not used will be lost.'
-    }
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    description: 'Defined long term projects',
-    price: 974,
-    features: [
-      'Up to 30 Gateways',
-      'Up to 300 Sensors',
-      '2 Million data points/month',
-      'Device Manager',
-      'Enterprise Support',
-      'White-Labeling'
-    ],
-    supportInfo: {
-      name: 'Enterprise Support',
-      hours: 10,
-      description: 'Our Enterprise support package provides customers with up to 10 hours of professional assistance each month. This support is accessible through multiple channels, including phone, video call, and email, ensuring you receive timely help in the format most convenient for you. Note: Support Hours are not transferable to the next month. All support hours not used will be lost.'
-    }
-  },
-  {
-    id: 'business-plus',
-    name: 'Business+',
-    description: 'Built for scalable IoT growth',
-    price: 1429,
-    features: [
-      'Up to 100 Gateways',
-      'Up to 1000 Sensors',
-      '4 Million data points/month',
-      'Device Manager',
-      'Premier Support',
-      'White-Labeling'
-    ],
-    supportInfo: {
-      name: 'Premier Support',
-      hours: 20,
-      description: 'Our Premier support package provides customers with up to 20 hours of professional assistance each month. This support is accessible through multiple channels, including phone, video call, and email, ensuring you receive timely help in the format most convenient for you. Note: Support Hours are not transferable to the next month. All support hours not used will be lost.'
-    }
-  }
-];
-
-const regions = [
-  { id: 'emia', label: 'EMIA - Europe, Middle East, and Africa', active: true },
-  { id: 'north-america', label: 'North America', active: true }
-];
+interface PlanWithSupport extends IPlan {
+  supportInfo?: SupportInfo;
+}
 
 export default function SubscriptionPlans() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [hoveredSupport, setHoveredSupport] = useState<string | null>(null);
+  const [plans, setPlans] = useState<PlanWithSupport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setLoading(true);
+        const response = await PLAN_API.GET_ALL_PLANS();
+        
+        if (response.data) {
+          // Transform API data to include supportInfo
+          const transformedPlans = response.data.map(plan => ({
+            ...plan,
+            supportInfo: plan.supportName ? {
+              name: plan.supportName,
+              hours: plan.supportHours || 0,
+              description: plan.supportDescription || ''
+            } : undefined
+          }));
+          
+          setPlans(transformedPlans);
+        } else {
+          setError('Failed to fetch plans');
+        }
+      } catch (err) {
+        setError('Error fetching plans');
+        console.error('Error fetching plans:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   const handlePlanSelect = (planId: string) => {
     console.log(`Selected plan: ${planId}`);
   };
 
-  const getSupportFeatureIndex = (features: string[]) => {
-    return features.findIndex(feature => 
-      feature.includes('Support') && !feature.includes('Community')
+  if (loading) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading plans...</p>
+        </div>
+      </div>
     );
-  };
+  }
+
+  if (error) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50 ">
-
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 relative">
         {plans.map((plan, index) => (
           <motion.div
-            key={plan.id}
+            key={plan.planType}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             className={`relative bg-white rounded-lg shadow-sm border-2 transition-all duration-300 ${
               plan.isPopular ? 'border-blue-500 shadow-lg scale-105' : 'border-gray-200 hover:border-gray-300'
             }`}
-            onMouseEnter={() => setSelectedPlan(plan.id)}
+            onMouseEnter={() => setSelectedPlan(plan.planType)}
             onMouseLeave={() => setSelectedPlan(null)}
           >
             {plan.isPopular && (
@@ -203,7 +159,7 @@ export default function SubscriptionPlans() {
                         {isSupportFeature && (
                           <div className="relative">
                             <button
-                              onMouseEnter={() => setHoveredSupport(plan.id)}
+                              onMouseEnter={() => setHoveredSupport(plan.planType)}
                               onMouseLeave={() => setHoveredSupport(null)}
                               className="text-gray-400 hover:text-blue-500 transition-colors"
                             >
@@ -221,7 +177,7 @@ export default function SubscriptionPlans() {
             {/* Support Tooltip */}
             {plan.supportInfo && (
               <AnimatePresence>
-                {hoveredSupport === plan.id && (
+                {hoveredSupport === plan.planType && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
